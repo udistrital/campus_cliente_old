@@ -1,19 +1,18 @@
-import { EstadoCivil } from './../../../@core/data/models/estado_civil';
-import { TipoIdentificacion } from './../../../@core/data/models/tipo_identificacion';
 import { ImplicitAutenticationService } from '../../../@core/utils/implicit_autentication.service';
 import { NuxeoService } from '../../../@core/utils/nuxeo.service';
-import { Genero } from './../../../@core/data/models/genero';
 import { InfoPersona } from './../../../@core/data/models/info_persona';
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
-import { PersonaService } from '../../../@core/data/persona.service';
-import { EnteService } from '../../../@core/data/ente.service';
 import { DocumentoService } from '../../../@core/data/documento.service';
 import { CampusMidService } from '../../../@core/data/campus_mid.service';
 import { FORM_INFO_PERSONA } from './form-info_persona';
 import { ToasterService, ToasterConfig, Toast, BodyOutputType } from 'angular2-toaster';
 import { TranslateService, LangChangeEvent } from '@ngx-translate/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import 'style-loader!angular2-toaster/toaster.css';
+import { IAppState } from '../../../@core/store/app.state';
+import { Store } from '@ngrx/store';
+import { ListService } from '../../../@core/store/services/list.service';
 
 @Component({
   selector: 'ngx-crud-info-persona',
@@ -47,20 +46,21 @@ export class CrudInfoPersonaComponent implements OnInit {
     private translate: TranslateService,
     private campusMidService: CampusMidService,
     private autenticationService: ImplicitAutenticationService,
-    private personaService: PersonaService,
-    private enteService: EnteService,
     private documentoService: DocumentoService,
     private nuxeoService: NuxeoService,
+    private store: Store < IAppState > ,
+    private listService: ListService,
     private toasterService: ToasterService) {
     this.formInfoPersona = FORM_INFO_PERSONA;
     this.construirForm();
     this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
       this.construirForm();
     });
-    this.loadOptionsEstadoCivil();
-    this.loadOptionsGenero();
-    this.loadOptionsTipoIdentificacion();
+    this.listService.findGenero();
+    this.listService.findEstadoCivil();
+    this.listService.findTipoIdentificacion();
     this.loading = false;
+    this.loadLists();
   }
 
   construirForm() {
@@ -74,38 +74,6 @@ export class CrudInfoPersonaComponent implements OnInit {
 
   useLanguage(language: string) {
     this.translate.use(language);
-  }
-
-  loadOptionsTipoIdentificacion(): void {
-    let tipoIdentificacion: Array<any> = [];
-    this.enteService.get('tipo_identificacion/?limit=0')
-      .subscribe(res => {
-        if (res !== null) {
-          tipoIdentificacion = <Array<TipoIdentificacion>>res;
-        }
-        this.formInfoPersona.campos[this.getIndexForm('TipoIdentificacion')].opciones = tipoIdentificacion;
-      });
-  }
-
-  loadOptionsEstadoCivil(): void {
-    let estadoCivil: Array<any> = [];
-    this.personaService.get('estado_civil/?limit=0')
-      .subscribe(res => {
-        if (res !== null) {
-          estadoCivil = <Array<EstadoCivil>>res;
-        }
-        this.formInfoPersona.campos[this.getIndexForm('EstadoCivil')].opciones = estadoCivil;
-      });
-  }
-  loadOptionsGenero(): void {
-    let genero: Array<any> = [];
-    this.personaService.get('genero/?limit=0')
-      .subscribe(res => {
-        if (res !== null) {
-          genero = <Array<Genero>>res;
-        }
-        this.formInfoPersona.campos[this.getIndexForm('Genero')].opciones = genero;
-      });
   }
 
   getIndexForm(nombre: String): number {
@@ -144,8 +112,24 @@ export class CrudInfoPersonaComponent implements OnInit {
                   this.info_info_persona.SoporteDocumento = filesResponse['SoporteDocumento'] + '';
                   this.loading = false;
                 }
+              },
+              (error: HttpErrorResponse) => {
+                Swal({
+                  type: 'error',
+                  title: error.status + '',
+                  text: this.translate.instant('ERROR.' + error.status),
+                  confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+                });
               });
           }
+        },
+        (error: HttpErrorResponse) => {
+          Swal({
+            type: 'error',
+            title: error.status + '',
+            text: this.translate.instant('ERROR.' + error.status),
+            confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+          });
         });
     } else {
       this.info_info_persona = undefined
@@ -198,8 +182,24 @@ export class CrudInfoPersonaComponent implements OnInit {
                       this.showToast('info', this.translate.instant('GLOBAL.actualizar'),
                         this.translate.instant('GLOBAL.info_persona') + ' ' +
                         this.translate.instant('GLOBAL.confirmarActualizar'));
+                    },
+                    (error: HttpErrorResponse) => {
+                      Swal({
+                        type: 'error',
+                        title: error.status + '',
+                        text: this.translate.instant('ERROR.' + error.status),
+                        confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+                      });
                     });
                 }
+              },
+              (error: HttpErrorResponse) => {
+                Swal({
+                  type: 'error',
+                  title: error.status + '',
+                  text: this.translate.instant('ERROR.' + error.status),
+                  confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+                });
               });
           } else {
             console.info(this.info_info_persona);
@@ -213,6 +213,14 @@ export class CrudInfoPersonaComponent implements OnInit {
                 this.showToast('info', this.translate.instant('GLOBAL.actualizar'),
                   this.translate.instant('GLOBAL.info_persona') + ' ' +
                   this.translate.instant('GLOBAL.confirmarActualizar'));
+              },
+              (error: HttpErrorResponse) => {
+                Swal({
+                  type: 'error',
+                  title: error.status + '',
+                  text: this.translate.instant('ERROR.' + error.status),
+                  confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+                });
               });
           }
         }
@@ -273,13 +281,29 @@ export class CrudInfoPersonaComponent implements OnInit {
                       this.showToast('error', this.translate.instant('GLOBAL.error'),
                       this.translate.instant('GLOBAL.error'));
                     }
+                  },
+                  (error: HttpErrorResponse) => {
+                    Swal({
+                      type: 'error',
+                      title: error.status + '',
+                      text: this.translate.instant('ERROR.' + error.status),
+                      confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+                    });
                   });
               }
-
+            },
+            (error: HttpErrorResponse) => {
+              Swal({
+                type: 'error',
+                title: error.status + '',
+                text: this.translate.instant('ERROR.' + error.status),
+                confirmButtonText: this.translate.instant('GLOBAL.aceptar'),
+              });
             })
         }
       });
   }
+
   ngOnInit() {
   }
 
@@ -319,4 +343,13 @@ export class CrudInfoPersonaComponent implements OnInit {
     this.toasterService.popAsync(toast);
   }
 
+  public loadLists() {
+    this.store.select((state) => state).subscribe(
+      (list) => {
+        this.formInfoPersona.campos[this.getIndexForm('Genero')].opciones = list.listGenero[0];
+        this.formInfoPersona.campos[this.getIndexForm('EstadoCivil')].opciones = list.listEstadoCivil[0];
+        this.formInfoPersona.campos[this.getIndexForm('TipoIdentificacion')].opciones = list.listTipoIdentificacion[0];
+      },
+    );
+  }
 }
