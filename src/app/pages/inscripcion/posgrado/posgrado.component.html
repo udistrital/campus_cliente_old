@@ -54,7 +54,9 @@
     </nb-card-header>
 
     <nb-card-body>
-      <div class="col-md-12">
+
+      <div *ngIf="check_politica" class="col-md-12">
+
         <blockquote class="blockquote ">
           <li>{{ 'GLOBAL.aviso_progreso' | translate}}</li>
         </blockquote>
