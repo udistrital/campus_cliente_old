@@ -14,12 +14,12 @@ export class AuthInterceptor implements HttpInterceptor {
     // Get the auth token from the service.
     const acces_token = window.localStorage.getItem('access_token');
 
-    if(acces_token) {
+    if (acces_token) {
     // Clone the request and replace the original headers with
     // cloned headers, updated with the authorization.
     const authToken = 'Bearer ' + acces_token;
     const authReq = req.clone({
-      headers: req.headers.set('Authorization', authToken)
+      headers: req.headers.set('Authorization', authToken),
     });
     // send cloned request with header to the next handler.
     return next.handle(authReq).pipe(
@@ -31,8 +31,8 @@ export class AuthInterceptor implements HttpInterceptor {
           }
         },
         (error: any) => {
-            console.log('error: ' + error);
-        }
+            console.info('error: ' + error);
+        },
       ));
     } else {
       return next.handle(req);
